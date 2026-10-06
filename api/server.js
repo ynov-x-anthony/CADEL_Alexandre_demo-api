@@ -8,6 +8,8 @@
  *   PORT             port d'ecoute                    (def: 3000)
  *   VERSION          renvoyee par "/" et /version     (def: "dev")
  *   PG*              connexion PostgreSQL (voir db.js)
+ * 
+ * ajout d'un commentaire test
  */
 
 const express = require('express');
