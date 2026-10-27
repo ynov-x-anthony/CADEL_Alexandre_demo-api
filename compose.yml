@@ -1,11 +1,13 @@
 services:
     api:
         build: ./api
+        image: ${IMAGE_PREFIX:-demo-api}/api:${TAG:-latest}
         command: ["sh", "-c", "PGPASSWORD=$$(cat /run/secrets/db_password) exec node server.js"]
         environment:
             PGHOST: db
             PGUSER: ${POSTGRES_USER}
             PGDATABASE: ${POSTGRES_DB}
+            NOTIFIER_PORT: "4000"
         secrets:
             - db_password
         ports:
@@ -13,6 +15,15 @@ services:
         depends_on:
             db:
                 condition: service_healthy
+        networks: [front, back]
+        restart: unless-stopped
+
+    notifier:
+        build: ./notifier
+        image: ${IMAGE_PREFIX:-demo-api}/notifier:${TAG:-latest}
+        environment:
+            PORT: "4000"
+        networks: [back] # jamais expose : seul api l'appelle, par son nom de service
         restart: unless-stopped
 
     db:
@@ -31,6 +42,7 @@ services:
             interval: 5s
             timeout: 3s
             retries: 10
+        networks: [back]
         restart: unless-stopped
 
     adminer:
@@ -38,11 +50,16 @@ services:
         ports:
             - "${ADMINER_PORT:-8081}:8080"
         depends_on: [db]
+        networks: [front, back]
         restart: unless-stopped
 
 secrets:
     db_password:
         file: ./secrets/db_password.txt
+
+networks:
+    front:
+    back:
 
 volumes:
     pgdata:

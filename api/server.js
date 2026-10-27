@@ -8,6 +8,7 @@
  *   PORT             port d'ecoute                    (def: 3000)
  *   VERSION          renvoyee par "/" et /version     (def: "dev")
  *   PG*              connexion PostgreSQL (voir db.js)
+ *   NOTIFIER_PORT    port du service notifier         (def: 4000)
  * 
  * ajout d'un commentaire test
  */
@@ -65,7 +66,14 @@ app.post('/products', async (req, res) => {
     return res.status(400).json({ error: 'name (string) et price_cents (entier >= 0) requis' });
   }
   try {
-    res.status(201).json(await db.addProduct(name, priceCents));
+    const product = await db.addProduct(name, priceCents);
+    // Best-effort : une panne de notifier ne doit jamais faire echouer la creation.
+    fetch(`http://notifier:${process.env.NOTIFIER_PORT || 4000}/notify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: product.name }),
+    }).catch((err) => console.error('[api] notify failed:', err.message));
+    res.status(201).json(product);
   } catch (err) {
     res.status(503).json({ error: 'db_unavailable', detail: err.message });
   }
